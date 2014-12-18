@@ -2,18 +2,18 @@
 
 #include <string.h>
 
-unsigned short  stack[STACK_SIZE];
-unsigned short* SP;
+word_t   stack[STACK_SIZE];
+word_t * SP;
 
 void Stack_Init() {
-	memset( stack, 0, STACK_SIZE * sizeof(unsigned short) );
+	memset( stack, 0, STACK_SIZE * sizeof(word_t) );
 	SP = stack;
 }
 
-void Stack_Push(unsigned short value) {
+void Stack_Push(word_t value) {
     *(SP++) = value;
 }
 
-unsigned short Stack_Pop() {
+word_t Stack_Pop() {
     return *(--SP);
 }

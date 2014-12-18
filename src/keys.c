@@ -1,12 +1,12 @@
 #include "keys.h"
 
-unsigned char keys[16];
+byte_t keys[16];
 
 void Keys_Init() {
-	memset( keys, 0, 16 * sizeof(unsigned char) );
+	memset( keys, 0, 16 * sizeof(byte_t) );
 }
 
-unsigned char Keys_IsPressed( unsigned char id ) {
+bool_t Keys_IsPressed( byte_t id ) {
     return keys[id] != 0;
 }
 

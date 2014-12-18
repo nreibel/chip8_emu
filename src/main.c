@@ -30,7 +30,7 @@ int main(void) {
         	Keys_HandleEvent( event );
         }
 
-        unsigned short instr = Core_ReadOpcode();
+        instruction_t instr = Core_ReadOpcode();
         Core_ExecuteInstr( instr );
 
         while ( get_timestamp() - t_begin < 2 ) {}

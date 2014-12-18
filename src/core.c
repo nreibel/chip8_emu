@@ -31,18 +31,18 @@ charset_t font = {
 };
 
 void Core_Init() {
-    srand(time(NULL));
+	srand(time(NULL));
 
-    // Reset memory
-    memset( Mem, 0, MEMORY_SIZE*sizeof(unsigned char) );
+	// Reset memory
+	memset( Mem, 0, MEMORY_SIZE*sizeof(unsigned char) );
 
-    // Reset registers
-    memset( V, 0, 16*sizeof(unsigned char) );
+	// Reset registers
+	memset( V, 0, 16*sizeof(unsigned char) );
 
-    // Load font into memory
-    memcpy( Mem + FONT_BASE_ADDR, font, sizeof(charset_t) );
+	// Load font into memory
+	memcpy( Mem + FONT_BASE_ADDR, font, sizeof(charset_t) );
 
-    // Set program counter to first instruction
+	// Set program counter to first instruction
 	PC = PROGRAM_BASE_ADDR;
 
 	// Set other registers
@@ -51,7 +51,7 @@ void Core_Init() {
 	delay_timer = 0;
 }
 
-void Core_LoadRom( char* path ) {
+void Core_LoadRom( char * path ) {
 	FILE * fp = fopen(path, "r");
 
 	// Get ROM size
@@ -65,17 +65,17 @@ void Core_LoadRom( char* path ) {
 	fclose(fp);
 }
 
-unsigned short Core_ReadOpcode() {
-    unsigned char high = Mem[PC++];
-    unsigned char low  = Mem[PC++];
-    return high << 8 | low;
+instruction_t Core_ReadOpcode() {
+	unsigned char high = Mem[PC++];
+	unsigned char low  = Mem[PC++];
+	return high << 8 | low;
 }
 
 void Core_SkipInstr() {
-	PC += sizeof(unsigned short);
+	PC += sizeof(instruction_t);
 }
 
-void Core_ExecuteInstr( unsigned short instr ) {
+void Core_ExecuteInstr( instruction_t instr ) {
 
     if ( OPCODE_MOV_VAL(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
@@ -162,6 +162,8 @@ void Core_ExecuteInstr( unsigned short instr ) {
                 }
             }
         }
+
+        Screen_Refresh();
     }
     else if ( OPCODE_RETURN(instr) ) {
         DBG_PRINT(("Call return\n"));

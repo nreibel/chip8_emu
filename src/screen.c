@@ -34,13 +34,13 @@ void Screen_Refresh() {
     SDL_Flip(sdl_surface);
 }
 
-unsigned char Screen_SwitchPixel(int x, int y) {
+bool_t Screen_SwitchPixel(int x, int y) {
 
 	y %= 32;
 	x %= 64;
 
     screen[x][y] = !screen[x][y];
-    return screen[x][y] == 0 ? 1 : 0;
+    return screen[x][y] == 0 ? TRUE : FALSE;
 }
 
 void Screen_HandleEvent( SDL_Event event ) {

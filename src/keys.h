@@ -3,6 +3,8 @@
 
 #include <SDL/SDL.h>
 
+#include "types.h"
+
 #define KEY_A   0x18
 #define KEY_Q   0x26
 #define KEY_Z   0x19
@@ -14,8 +16,8 @@
 #define MAP_KEY_12 KEY_S
 #define MAP_KEY_13 KEY_Z
 
-void 			Keys_Init			();
-void 			Keys_HandleEvent	( SDL_Event );
-unsigned char	Keys_IsPressed		( unsigned char );
+void 	Keys_Init			();
+void 	Keys_HandleEvent	( SDL_Event );
+bool_t	Keys_IsPressed		( byte_t );
 
-#endif
+#endif /* _KEYS_H_ */
