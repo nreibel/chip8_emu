@@ -16,7 +16,7 @@ int main(void) {
     Keys_Init();
     Stack_Init();
 
-    Core_LoadRom("roms/PONG");
+    Core_LoadRom("roms/BLINKY");
 
     SDL_Event event;
 
@@ -33,7 +33,7 @@ int main(void) {
         instruction_t instr = Core_ReadOpcode();
         Core_ExecuteInstr( instr );
 
-        while ( get_timestamp() - t_begin < 2 ) {}
+        while ( get_timestamp() - t_begin < 3 ) {}
     }
     
     return 0;

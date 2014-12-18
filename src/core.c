@@ -12,32 +12,32 @@
 #include "stack.h"
 
 charset_t font = {
-    {0x0F, 0x09, 0x09, 0x09, 0x0F}, // 0
-    {0x02, 0x06, 0x02, 0x02, 0x07}, // 1
-    {0x0F, 0x01, 0x0F, 0x08, 0x0F}, // 2
-    {0x0F, 0x01, 0x0F, 0x01, 0x0F}, // 3
-    {0x09, 0x09, 0x0F, 0x01, 0x01}, // 4
-    {0x0F, 0x08, 0x0F, 0x01, 0x0F}, // 5
-    {0x0F, 0x08, 0x0F, 0x09, 0x0F}, // 6
-    {0x0F, 0x01, 0x02, 0x04, 0x04}, // 7
-    {0x0F, 0x09, 0x0F, 0x09, 0x0F}, // 8
-    {0x0F, 0x09, 0x0F, 0x01, 0x0F}, // 9
-    {0x0F, 0x09, 0x0F, 0x09, 0x09}, // A
-    {0x0E, 0x09, 0x0E, 0x09, 0x0E}, // B
-    {0x0F, 0x08, 0x08, 0x08, 0x0F}, // C
-    {0x0E, 0x09, 0x09, 0x09, 0x0E}, // D
-    {0x0F, 0x08, 0x0F, 0x08, 0x0F}, // E
-    {0x0F, 0x08, 0x0F, 0x08, 0x08}  // F
+    {0xF0, 0x90, 0x90, 0x90, 0xF0}, // 0
+    {0x20, 0x60, 0x20, 0x20, 0x70}, // 1
+    {0xF0, 0x10, 0xF0, 0x80, 0xF0}, // 2
+    {0xF0, 0x10, 0xF0, 0x10, 0xF0}, // 3
+    {0x90, 0x90, 0xF0, 0x10, 0x10}, // 4
+    {0xF0, 0x80, 0xF0, 0x10, 0xF0}, // 5
+    {0xF0, 0x80, 0xF0, 0x90, 0xF0}, // 6
+    {0xF0, 0x10, 0x20, 0x40, 0x40}, // 7
+    {0xF0, 0x90, 0xF0, 0x90, 0xF0}, // 8
+    {0xF0, 0x90, 0xF0, 0x10, 0xF0}, // 9
+    {0xF0, 0x90, 0xF0, 0x90, 0x90}, // A
+    {0xE0, 0x90, 0xE0, 0x90, 0xE0}, // B
+    {0xF0, 0x80, 0x80, 0x80, 0xF0}, // C
+    {0xE0, 0x90, 0x90, 0x90, 0xE0}, // D
+    {0xF0, 0x80, 0xF0, 0x80, 0xF0}, // E
+    {0xF0, 0x80, 0xF0, 0x80, 0x80}  // F
 };
 
 void Core_Init() {
 	srand(time(NULL));
 
 	// Reset memory
-	memset( Mem, 0, MEMORY_SIZE*sizeof(unsigned char) );
+	memset( Mem, 0, MEMORY_SIZE*sizeof(byte_t) );
 
 	// Reset registers
-	memset( V, 0, 16*sizeof(unsigned char) );
+	memset( V, 0, 16*sizeof(byte_t) );
 
 	// Load font into memory
 	memcpy( Mem + FONT_BASE_ADDR, font, sizeof(charset_t) );
@@ -60,14 +60,14 @@ void Core_LoadRom( char * path ) {
 	fseek(fp, 0, SEEK_SET);
 
 	// Load into memory
-	fread( Mem + PROGRAM_BASE_ADDR, sizeof(char), fsize, fp );
+	fread( Mem + PROGRAM_BASE_ADDR, sizeof(byte_t), fsize, fp );
 
 	fclose(fp);
 }
 
 instruction_t Core_ReadOpcode() {
-	unsigned char high = Mem[PC++];
-	unsigned char low  = Mem[PC++];
+	byte_t high = Mem[PC++];
+	byte_t low  = Mem[PC++];
 	return high << 8 | low;
 }
 
@@ -79,13 +79,13 @@ void Core_ExecuteInstr( instruction_t instr ) {
 
     if ( OPCODE_MOV_VAL(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
-        int val = MASK(instr, 0x00FF, 0);
+        byte_t val = MASK(instr, 0x00FF, 0);
         DBG_PRINT(("Set V[%u] to %u\n", reg, val));
         V[reg] = val;
     }
     else if ( OPCODE_ADD_VAL(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
-        int val = MASK(instr, 0x00FF, 0);
+        byte_t val = MASK(instr, 0x00FF, 0);
         DBG_PRINT(("Add %u to V[%u]\n", val, reg));
         V[reg] += val;
     }
@@ -100,6 +100,12 @@ void Core_ExecuteInstr( instruction_t instr ) {
         int y = MASK(instr, 0x00F0, 4);
         DBG_PRINT(("V[%u] &= V[%u]\n", x, y));
         V[x] &= V[y];
+    }
+    else if ( OPCODE_XOR_REG(instr) ) {
+        int x = MASK(instr, 0x0F00, 8);
+        int y = MASK(instr, 0x00F0, 4);
+        DBG_PRINT(("V[%u] ^= V[%u]\n", x, y));
+        V[x] ^= V[y];
     }
     else if ( OPCODE_ADD_REG(instr) ) {
         int x = MASK(instr, 0x0F00, 8);
@@ -117,30 +123,46 @@ void Core_ExecuteInstr( instruction_t instr ) {
         V[15] = V[x] > V[y];
 		V[x] -= V[y];
     }
+    else if ( OPCODE_LSL(instr) ) {
+        int x = MASK(instr, 0x0F00, 8);
+        int y = MASK(instr, 0x00F0, 4);
+        DBG_PRINT(("V[%u] <<= 1\n", x));
+        V[15] = V[x] >> 7;
+        V[x] <<= 1;
+    }
+    else if ( OPCODE_SKIP_REG_EQ(instr) ) {
+        int x = MASK(instr, 0x0F00, 8);
+        int y = MASK(instr, 0x00F0, 4);
+        DBG_PRINT(("Skip if V[%u] == V[%u]\n", x, y));
+
+        if ( V[x] == V[y] ) {
+        	Core_SkipInstr();
+        }
+    }
     else if ( OPCODE_RAND(instr) ) {
         int reg  = MASK(instr, 0x0F00, 8);
-        int mask = MASK(instr, 0x00FF, 0);
-        DBG_PRINT(("Set V[%u] to random < %u\n", reg, mask));
-        V[reg] = (unsigned char) (rand() & mask);
+        byte_t mask = MASK(instr, 0x00FF, 0);
+        DBG_PRINT(("Set V[%u] to random & %u\n", reg, mask));
+        V[reg] = (byte_t) (rand() & mask);
     }
     else if ( OPCODE_SKIP_EQ(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
-        int val = MASK(instr, 0x00FF, 0);
-        DBG_PRINT(("Skip if V[%u] (%u) == %u\n", reg, V[reg], val));
+        byte_t val = MASK(instr, 0x00FF, 0);
+        DBG_PRINT(("Skip if %u == %u\n", V[reg], val));
         if ( V[reg] == val ) {
         	Core_SkipInstr();
         }
     }
     else if ( OPCODE_SKIP_NEQ(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
-        int val = MASK(instr, 0x00FF, 0);
-        DBG_PRINT(("Skip if V[%u] (%u) != %u\n", reg, V[reg], val));
+        byte_t val = MASK(instr, 0x00FF, 0);
+        DBG_PRINT(("Skip if %u != %u\n", V[reg], val));
         if ( V[reg] != val ) {
         	Core_SkipInstr();
         }
     }
     else if ( OPCODE_MOV_I(instr) ) {
-        unsigned short val = MASK(instr, 0x0FFF, 0);
+        word_t val = MASK(instr, 0x0FFF, 0);
         DBG_PRINT(("Set I to 0x%03X\n", val));
         I = val;
     }
@@ -152,22 +174,28 @@ void Core_ExecuteInstr( instruction_t instr ) {
 
         int dX, dY;
         int addr = I;
-        V[15] = 0;
+        bool_t clear = false;
 
         for ( dY = 0 ; dY < h ; dY++ ) {
             unsigned char mask = Mem[addr++];
             for ( dX = 0 ; dX < 8 ; dX++ ) {
                 if ( mask & (0x80 >> dX) ) {
-                    V[15] |= Screen_SwitchPixel(V[x] + dX, V[y] + dY);
+                    clear |= Screen_SwitchPixel(V[x] + dX, V[y] + dY);
                 }
             }
         }
+
+        V[15] = (clear ? 1 : 0);
 
         Screen_Refresh();
     }
     else if ( OPCODE_RETURN(instr) ) {
         DBG_PRINT(("Call return\n"));
         PC = Stack_Pop();
+    }
+    else if ( OPCODE_CLS(instr) ) {
+        DBG_PRINT(("Call return\n"));
+        Screen_Clear();
     }
     else if ( OPCODE_BCD(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
@@ -191,10 +219,28 @@ void Core_ExecuteInstr( instruction_t instr ) {
             DBG_PRINT(("  V[%u] = Mem[%x] (0x%02x)\n", i, I+i, Mem[I+i]));
         }
     }
+    else if ( OPCODE_STR(instr) ) {
+        int reg = MASK(instr, 0x0F00, 8);
+        DBG_PRINT(("Store V[0] to V[%u] from 0x%02x\n", reg, I));
+
+        int i;
+        for ( i = 0 ; i <= reg ; i++ ) {
+            Mem[I+i] = V[i];
+            DBG_PRINT(("  Mem[%x] = V[%u] (0x%02x)\n", I+i, i, Mem[I+i]));
+        }
+    }
     else if ( OPCODE_FONT(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
         DBG_PRINT(("Set I to char %x \n", V[reg]));
         I = FONT_BASE_ADDR + (FONTS_HEIGHT * V[reg]);
+    }
+    else if ( OPCODE_SKIP_KEY_DOWN(instr) ) {
+        int reg = MASK(instr, 0x0F00, 8);
+        DBG_PRINT(("Check key %u pressed\n", V[reg]));
+
+        if ( Keys_IsPressed( V[reg] ) ) {
+        	Core_SkipInstr();
+        }
     }
     else if ( OPCODE_SKIP_KEY_UP(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
@@ -203,6 +249,11 @@ void Core_ExecuteInstr( instruction_t instr ) {
         if ( !Keys_IsPressed( V[reg] ) ) {
         	Core_SkipInstr();
         }
+    }
+    else if ( OPCODE_INPUT(instr) ) {
+        int reg = MASK(instr, 0x0F00, 8);
+        DBG_PRINT(("Get key into V[%u]\n", reg));
+        V[reg] = Keys_GetKey();
     }
     else if ( OPCODE_SET_DELAY(instr) ) {
         int reg = MASK(instr, 0x0F00, 8);
@@ -223,21 +274,27 @@ void Core_ExecuteInstr( instruction_t instr ) {
             V[reg] = 0;
         }
         else {
-            V[reg] = (unsigned char) (delay_timer - now);
+            V[reg] = (byte_t) (delay_timer - now);
         }
     }
     else if ( OPCODE_JUMP(instr) ) {
-        int jmp = MASK(instr, 0x0FFF, 0);
+    	word_t jmp = MASK(instr, 0x0FFF, 0);
         DBG_PRINT(("Jump to 0x%03X\n", jmp));
         PC = jmp;
     }
     else if ( OPCODE_CALL(instr) ) {
-        unsigned short jmp = MASK(instr, 0x0FFF, 0);
+        word_t jmp = MASK(instr, 0x0FFF, 0);
         DBG_PRINT(("Call subroutine at 0x%03X\n", jmp));
         Stack_Push( PC );
         PC = jmp;
     }
+    else if ( OPCODE_ADD_I(instr) ) {
+        int reg = MASK(instr, 0x0F00, 8);
+        DBG_PRINT(("Add V[%u] to I\n", delay_timer, reg));
+        I += V[reg];
+    }
     else {
         DBG_PRINT(("Unknown instruction %04X\n", instr));
+        exit(0);
     }
 }
