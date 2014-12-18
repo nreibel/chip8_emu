@@ -2,18 +2,18 @@
 
 #include <string.h>
 
-unsigned short  buffer[STACK_SIZE];
-unsigned short* stack_ptr;
+unsigned short  stack[STACK_SIZE];
+unsigned short* SP;
 
 void Stack_Init() {
-	memset( buffer, 0, STACK_SIZE * sizeof(unsigned short) );
-	stack_ptr = buffer;
+	memset( stack, 0, STACK_SIZE * sizeof(unsigned short) );
+	SP = stack;
 }
 
 void Stack_Push(unsigned short value) {
-    *(stack_ptr++) = value;
+    *(SP++) = value;
 }
 
 unsigned short Stack_Pop() {
-    return *(--stack_ptr);
+    return *(--SP);
 }
