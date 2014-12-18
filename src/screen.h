@@ -5,12 +5,13 @@
 
 #include "types.h"
 
-#define WINDOW_WIDTH    320
-#define WINDOW_HEIGHT   240
+#define WINDOW_WIDTH    640
+#define WINDOW_HEIGHT   320
 #define SCREEN_WIDTH    64
 #define SCREEN_HEIGHT   32
 #define COLOR_FRONT     0x008000
 #define COLOR_BACK      0x000000
+#define PIXEL_MARGIN	1
 
 typedef bool_t screen_t[SCREEN_WIDTH][SCREEN_HEIGHT];
 

@@ -9,22 +9,18 @@
 #define KEY_2   0x0B
 #define KEY_3   0x0C
 #define KEY_4   0x0D
-
 #define KEY_A   0x18
 #define KEY_Z   0x19
 #define KEY_E   0x1A
 #define KEY_R   0x1B
-
 #define KEY_Q   0x26
 #define KEY_S   0x27
 #define KEY_D   0x28
 #define KEY_F   0x29
-
 #define KEY_W   0x34
 #define KEY_X   0x35
 #define KEY_C   0x36
 #define KEY_V   0x37
-
 #define KEY_ESC 0x09
 
 #define MAP_KEY_1 KEY_1

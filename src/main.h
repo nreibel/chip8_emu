@@ -9,6 +9,4 @@
     #define DBG_PRINT(str) {;}
 #endif
 
-unsigned long   get_timestamp   ();
-
 #endif
