@@ -2,7 +2,7 @@ CC = gcc
 LIBS = -lSDL
 CFLAGS = -Wall
 
-chip8: main.o screen.o stack.o keys.o
+chip8: main.o screen.o stack.o keys.o core.o timer.o
 	$(CC) $(CFLAGS) -o $@ obj/*.o $(LIBS)
 
 %.o: src/%.c

@@ -6,8 +6,8 @@ word_t stack[STACK_SIZE];
 word_t *SP;
 
 void Stack_Init() {
-	memset( stack, 0, STACK_SIZE * sizeof(word_t) );
-	SP = stack;
+    memset(stack, 0, STACK_SIZE * sizeof(word_t));
+    SP = stack;
 }
 
 void Stack_Push(word_t value) {

@@ -6,20 +6,19 @@
 mstimer_t get_timestamp() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (mstimer_t) ((tv.tv_sec*1000)+(tv.tv_usec/1000));
+    return (mstimer_t) ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
 }
 
-void Timer_Set( mstimer_t *timer, unsigned int value ) {
-	*timer = get_timestamp() + value;
+void Timer_Set(mstimer_t *timer, unsigned int value) {
+    *timer = get_timestamp() + value;
 }
 
-unsigned int Timer_Get( mstimer_t timer ) {
+unsigned int Timer_Get(mstimer_t timer) {
     mstimer_t now = get_timestamp();
 
-    if ( now > timer ) {
+    if (now > timer) {
         return 0;
-    }
-    else {
+    } else {
         mstimer_t diff = timer - now;
 
         // Never return zero unless the timer actually expired

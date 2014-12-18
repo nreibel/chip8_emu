@@ -41,9 +41,9 @@
 #define MAP_KEY_E KEY_F
 #define MAP_KEY_F KEY_V
 
-void 	Keys_Init			();
-void 	Keys_HandleEvent	( SDL_Event );
-bool_t	Keys_IsPressed		( byte_t );
-byte_t  Keys_GetKey			();
+void Keys_Init();
+void Keys_HandleEvent(SDL_Event);
+bool_t Keys_IsPressed(byte_t);
+byte_t Keys_GetKey();
 
 #endif /* _KEYS_H_ */

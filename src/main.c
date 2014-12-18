@@ -22,31 +22,32 @@ void Reset() {
 
 int main(void) {
 
-	Reset();
+    Reset();
 
     SDL_Event event;
-	mstimer_t cycle_timer;
+    mstimer_t cycle_timer;
 
-    for(;;) {
+    for (;;) {
 
-    	Timer_Set( &cycle_timer, 1000/REFRESH_RATE );
+        Timer_Set(&cycle_timer, 1000 / REFRESH_RATE);
 
-    	// Handle events
-        while( SDL_PollEvent( &event ) ) {
-        	Screen_HandleEvent( event );
-        	Keys_HandleEvent( event );
+        // Handle events
+        while (SDL_PollEvent(&event)) {
+            Screen_HandleEvent(event);
+            Keys_HandleEvent(event);
         }
 
         int cpt;
-        for ( cpt = 0 ; cpt < CLOCK_SPEED/REFRESH_RATE ; cpt++ ) {
-        	instruction_t instr = Core_ReadOpcode();
-        	Core_ExecuteInstr( instr );
+        for (cpt = 0; cpt < CLOCK_SPEED / REFRESH_RATE; cpt++) {
+            instruction_t instr = Core_ReadOpcode();
+            Core_ExecuteInstr(instr);
         }
 
         Screen_Refresh();
 
-        while ( Timer_Get(cycle_timer) > 0 ) {}
+        while (Timer_Get(cycle_timer) > 0) {
+        }
     }
-    
+
     return 0;
 }
