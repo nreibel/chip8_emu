@@ -3,23 +3,27 @@
 
 #include "timer.h"
 
-timer_60hz_t get_timestamp() {
+mstimer_t get_timestamp() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (timer_60hz_t) (tv.tv_usec / 1000);
+    return (mstimer_t) ((tv.tv_sec*1000)+(tv.tv_usec/1000));
 }
 
-void Timer_Set( timer_60hz_t *timer, byte_t value ) {
+void Timer_Set( mstimer_t *timer, unsigned int value ) {
 	*timer = get_timestamp() + value;
 }
 
+unsigned int Timer_Get( mstimer_t timer ) {
+    mstimer_t now = get_timestamp();
 
-byte_t Timer_Get( timer_60hz_t timer ) {
-    timer_60hz_t now = get_timestamp();
     if ( now > timer ) {
         return 0;
     }
     else {
-        return (byte_t) (timer - now);
+        mstimer_t diff = timer - now;
+
+        // Never return zero unless the timer actually expired
+        // Always set the last bit to make sure of that
+        return (unsigned int) (diff | 1);
     }
 }

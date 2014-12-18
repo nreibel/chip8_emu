@@ -9,4 +9,6 @@
     #define DBG_PRINT(str) {;}
 #endif
 
+void Reset();
+
 #endif

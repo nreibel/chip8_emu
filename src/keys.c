@@ -1,4 +1,5 @@
 #include "keys.h"
+#include "main.h"
 
 bool_t keys[16];
 
@@ -40,9 +41,11 @@ byte_t Keys_GetKey() {
 			case MAP_KEY_E: return 0xE;
 			case MAP_KEY_F: return 0xF;
 			case KEY_ESC:	exit(0);
-			default: 		printf("Unhandled key 0x%02x\n", event.key.keysym.scancode);
 		}
 	}
+
+	// Should not get here.
+	return 0xFF;
 }
 
 void Keys_HandleEvent( SDL_Event event ) {
@@ -53,23 +56,25 @@ void Keys_HandleEvent( SDL_Event event ) {
 	}
 
 	switch( event.key.keysym.scancode ) {
-		case MAP_KEY_0: keys[0x0] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_1: keys[0x1] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_2: keys[0x2] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_3: keys[0x3] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_4: keys[0x4] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_5: keys[0x5] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_6: keys[0x6] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_7: keys[0x7] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_8: keys[0x8] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_9: keys[0x9] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_A: keys[0xA] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_B: keys[0xB] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_C: keys[0xC] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_D: keys[0xD] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_E: keys[0xE] = (event.type == SDL_KEYDOWN ? true : false); break;
-		case MAP_KEY_F: keys[0xF] = (event.type == SDL_KEYDOWN ? true : false); break;
+		case MAP_KEY_0: keys[0x0] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_1: keys[0x1] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_2: keys[0x2] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_3: keys[0x3] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_4: keys[0x4] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_5: keys[0x5] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_6: keys[0x6] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_7: keys[0x7] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_8: keys[0x8] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_9: keys[0x9] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_A: keys[0xA] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_B: keys[0xB] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_C: keys[0xC] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_D: keys[0xD] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_E: keys[0xE] = (event.type == SDL_KEYDOWN ? true : false); return;
+		case MAP_KEY_F: keys[0xF] = (event.type == SDL_KEYDOWN ? true : false); return;
+
 		case KEY_ESC:	exit(0);
-		default:		printf("Unhandled key 0x%02x\n", event.key.keysym.scancode);
+		case KEY_ENTER:	Reset(); return;
+		default: 		fprintf(stderr, "Unhandled key 0x%02x\n", event.key.keysym.scancode);
 	}
 }

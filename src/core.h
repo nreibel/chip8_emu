@@ -16,8 +16,8 @@ word_t 			PC;					// Program Counter
 byte_t 			Mem[MEMORY_SIZE];	// 1kB memory
 byte_t 			V[16];				// 16 8-bits registers
 word_t 			I;					// Memory pointer
-timer_60hz_t	delay_timer;
-timer_60hz_t	sound_timer;
+mstimer_t	delay_timer;
+mstimer_t	sound_timer;
 
 void Core_Init();
 void Core_LoadRom( char* );

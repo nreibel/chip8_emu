@@ -6,21 +6,30 @@
 #include "stack.h"
 #include "keys.h"
 #include "core.h"
+#include "timer.h"
 
-int main(void) {
+#define REFRESH_RATE		32
+#define CLOCK_SPEED			512
 
+void Reset() {
     Core_Init();
     Screen_Init();
     Keys_Init();
     Stack_Init();
 
-    Core_LoadRom("roms/PONG");
+    Core_LoadRom("roms/UFO");
+}
+
+int main(void) {
+
+	Reset();
 
     SDL_Event event;
+	mstimer_t cycle_timer;
 
     for(;;) {
 
-        unsigned long t_begin = get_timestamp();
+    	Timer_Set( &cycle_timer, 1000/REFRESH_RATE );
 
     	// Handle events
         while( SDL_PollEvent( &event ) ) {
@@ -28,10 +37,15 @@ int main(void) {
         	Keys_HandleEvent( event );
         }
 
-        instruction_t instr = Core_ReadOpcode();
-        Core_ExecuteInstr( instr );
+        int cpt;
+        for ( cpt = 0 ; cpt < CLOCK_SPEED/REFRESH_RATE ; cpt++ ) {
+        	instruction_t instr = Core_ReadOpcode();
+        	Core_ExecuteInstr( instr );
+        }
 
-        while ( get_timestamp() - t_begin < 2 ) {}
+        Screen_Refresh();
+
+        while ( Timer_Get(cycle_timer) > 0 ) {}
     }
     
     return 0;

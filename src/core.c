@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "main.h"
 #include "core.h"
@@ -157,7 +158,6 @@ void Core_ExecuteInstr( instruction_t instr ) {
             }
         }
         V[15] = (clear ? 1 : 0);
-        Screen_Refresh();
     }
     else if ( OPCODE_RETURN(instr) ) {
         DBG_PRINT(("Call return\n"));
@@ -218,12 +218,14 @@ void Core_ExecuteInstr( instruction_t instr ) {
         V[reg] = Keys_GetKey();
     }
     else if ( OPCODE_SET_DELAY(instr) ) {
-        DBG_PRINT(("Set delay timer to %u ms\n", V[x]));
-        Timer_Set( &delay_timer, V[x] );
+        DBG_PRINT(("Set delay timer to %u ticks\n", V[x]));
+        int ms = V[x] * 1000 / 60;
+        Timer_Set( &delay_timer, ms );
     }
     else if ( OPCODE_SET_SOUND(instr) ) {
-        DBG_PRINT(("Set sound timer to V[%u]\n", x));
-        Timer_Set( &sound_timer, V[x] );
+        DBG_PRINT(("Set sound timer to %u ticks\n", V[x]));
+        int ms = V[x] * 1000 / 60;
+        Timer_Set( &sound_timer, ms );
     }
     else if ( OPCODE_GET_DELAY(instr) ) {
         V[x] = Timer_Get( delay_timer );
@@ -243,7 +245,7 @@ void Core_ExecuteInstr( instruction_t instr ) {
         I += V[x];
     }
     else {
-        DBG_PRINT(("Unknown instruction %04X\n", instr));
+        fprintf(stderr, "Unknown instruction %04X\n", instr);
         exit(0);
     }
 }
