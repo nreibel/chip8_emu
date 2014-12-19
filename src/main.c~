@@ -17,7 +17,7 @@ void Reset() {
     Keys_Init();
     Stack_Init();
 
-    Core_LoadRom("roms/TETRIS");
+    Core_LoadRom("roms/MERLIN");
 }
 
 int main(void) {

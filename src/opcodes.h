@@ -16,7 +16,7 @@
 #define OPCODE_XOR(op)            (((op) & 0xF00F) == 0x8003)
 #define OPCODE_ADD_REG(op)        (((op) & 0xF00F) == 0x8004)
 #define OPCODE_SUB_REG(op)        (((op) & 0xF00F) == 0x8005)
-// #define OPCODE_LSR(op)         (((op) & 0xF00F) == 0x8006)
+#define OPCODE_LSR(op)            (((op) & 0xF00F) == 0x8006)
 // #define OPCODE_SUBN(op)        (((op) & 0xF00F) == 0x8007)
 #define OPCODE_LSL(op)            (((op) & 0xF00F) == 0x800E)
 #define OPCODE_SKIP_REG_EQ(op)    (((op) & 0xF00F) == 0x9000)
