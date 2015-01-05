@@ -9,6 +9,8 @@
 #define DBG_PRINT(str) {;}
 #endif
 
+char* rom_path;
+
 void Reset();
 
 #endif

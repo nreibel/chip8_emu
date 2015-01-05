@@ -51,8 +51,11 @@ void Core_Init() {
     delay_timer = 0;
 }
 
-void Core_LoadRom(char * path) {
+int Core_LoadRom(char * path) {
     FILE * fp = fopen(path, "r");
+    if ( fp == NULL ) {
+        return -1;
+    }
 
     // Get ROM size
     fseek(fp, 0, SEEK_END);
@@ -63,6 +66,7 @@ void Core_LoadRom(char * path) {
     fread(Mem + PROGRAM_BASE_ADDR, sizeof(byte_t), fsize, fp);
 
     fclose(fp);
+    return 0;
 }
 
 instruction_t Core_ReadOpcode() {

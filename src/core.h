@@ -20,7 +20,7 @@ mstimer_t delay_timer;
 mstimer_t sound_timer;
 
 void Core_Init();
-void Core_LoadRom(char*);
+int  Core_LoadRom(char*);
 void Core_SkipInstr();
 instruction_t Core_ReadOpcode();
 void Core_ExecuteInstr(instruction_t instr);

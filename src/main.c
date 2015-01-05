@@ -13,14 +13,26 @@
 
 void Reset() {
     Core_Init();
-    Screen_Init();
     Keys_Init();
     Stack_Init();
 
-    Core_LoadRom("roms/TETRIS");
+    if ( Core_LoadRom(rom_path) < 0 ) {
+        printf("File not found\n");
+        exit(-2);
+    }
+
+    Screen_Init();
 }
 
-int main(void) {
+int main(int argc, char** argv) {
+
+    if ( argc != 2 ) {
+        printf("Missing path to rom\n");
+        exit(-1);
+    }
+    else {
+        rom_path = argv[1];
+    }
 
     Reset();
 
