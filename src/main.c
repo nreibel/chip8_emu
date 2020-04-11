@@ -1,64 +1,57 @@
 #include <stdio.h>
+#include <SDL2/SDL.h>
 
-#include "main.h"
-#include "opcodes.h"
-#include "screen.h"
-#include "stack.h"
-#include "keys.h"
 #include "core.h"
-#include "timer.h"
+#include "keys.h"
+#include "screen.h"
 
-#define REFRESH_RATE 32
-#define CLOCK_SPEED  512
+int main(int argc, char** argv)
+{
+    SDL_Event event;
+    SDL_Init(SDL_INIT_EVERYTHING);
 
-void Reset() {
-    Core_Init();
-    Keys_Init();
-    Stack_Init();
-
-    if ( Core_LoadRom(rom_path) < 0 ) {
-        printf("File not found\n");
-        exit(-2);
-    }
-
-    Screen_Init();
-}
-
-int main(int argc, char** argv) {
-
-    if ( argc != 2 ) {
+    if ( argc != 2 )
+    {
         printf("Missing path to rom\n");
         exit(-1);
     }
-    else {
-        rom_path = argv[1];
+    else if ( Core_Init( argv[1] ) != 0 )
+    {
+        printf("Failed to init core\n");
+        exit(-2);
     }
 
-    Reset();
+    Keys_Init();
+    Screen_Init();
 
-    SDL_Event event;
-    mstimer_t cycle_timer;
-
-    for (;;) {
-
-        Timer_Set(&cycle_timer, 1000 / REFRESH_RATE);
+    while(1)
+    {
+        uint32_t timeStart = SDL_GetTicks();
 
         // Handle events
-        while (SDL_PollEvent(&event)) {
-            Screen_HandleEvent(event);
-            Keys_HandleEvent(event);
+        while (SDL_PollEvent(&event))
+        {
+            switch(event.type)
+            {
+                case SDL_QUIT:
+                    Core_Exit();
+                    break;
+
+                case SDL_KEYDOWN:
+                case SDL_KEYUP:
+                    Keys_HandleEvent(&event);
+                    break;
+
+                default:
+                    // Do nothing
+                    break;
+            }
         }
 
-        int cpt;
-        for (cpt = 0; cpt < CLOCK_SPEED / REFRESH_RATE; cpt++) {
-            instruction_t instr = Core_ReadOpcode();
-            Core_ExecuteInstr(instr);
-        }
+        instruction_t instr = Core_ReadOpcode();
+        Core_ExecuteInstr(instr);
 
-        Screen_Refresh();
-
-        while (Timer_Get(cycle_timer) > 0) {
-        }
+        while (SDL_GetTicks() - timeStart < 1000/CLOCK_SPEED) SDL_Delay(1);
     }
 
     return 0;

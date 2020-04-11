@@ -5,7 +5,7 @@ typedef unsigned char byte_t;
 typedef unsigned short word_t;
 
 typedef enum {
-    false = 0, true = !0
+    False = 0, True = !0
 } bool_t;
 
 #endif /* TYPES_H_ */

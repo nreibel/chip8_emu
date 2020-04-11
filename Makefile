@@ -1,17 +1,18 @@
+OUT=./obj
 CC = gcc
-LIBS = -lSDL
+LIBS = -lSDL2
 CFLAGS = -Wall
 
-chip8: main.o screen.o stack.o keys.o core.o timer.o
+chip8: main.o screen.o keys.o core.o timer.o
 	$(CC) $(CFLAGS) -o $@ obj/*.o $(LIBS)
 
 %.o: src/%.c
-	$(CC) $(CFLAGS) -c -o obj/$@ $<
+	$(CC) $(CFLAGS) -DDEBUG -c -o $(OUT)/$@ $<
 
 prepare:
-	mkdir obj
+	mkdir -p $(OUT)/obj
 
 clean:
-	rm -rf ./obj chip8
+	rm -rf $(OUT) chip8
 
 all: clean prepare chip8

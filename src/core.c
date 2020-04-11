@@ -3,13 +3,17 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "main.h"
 #include "core.h"
 #include "opcodes.h"
-#include "screen.h"
 #include "keys.h"
-#include "stack.h"
 #include "timer.h"
+#include "bits.h"
+
+State state;
+State save[SAVE_SLOTS];
+int currentSlot = 0;
+
+State *current = &state;
 
 charset_t font = {
     { 0xF0, 0x90, 0x90, 0x90, 0xF0 }, // 0
@@ -30,56 +34,80 @@ charset_t font = {
     { 0xF0, 0x80, 0xF0, 0x80, 0x80 }  // F
 };
 
-void Core_Init() {
-    srand(time(NULL));
-
-    // Reset memory
-    memset(Mem, 0, MEMORY_SIZE * sizeof(byte_t));
-
-    // Reset registers
-    memset(V, 0, 16 * sizeof(byte_t));
-
-    // Load font into memory
-    memcpy(Mem + FONT_BASE_ADDR, font, sizeof(charset_t));
-
-    // Set program counter to first instruction
-    PC = PROGRAM_BASE_ADDR;
-
-    // Set other registers
-    I = 0;
-    sound_timer = 0;
-    delay_timer = 0;
+void Core_SaveState()
+{
+    printf("Saving state %d\n", currentSlot);
+    memcpy( &save[currentSlot], &state, sizeof(State) );
+    INC(currentSlot, SAVE_SLOTS);
 }
 
-int Core_LoadRom(char * path) {
-    FILE * fp = fopen(path, "r");
-    if ( fp == NULL ) {
+void Core_LoadState()
+{
+    DEC(currentSlot, SAVE_SLOTS);
+    printf("Loading state %d\n", currentSlot);
+    memcpy( &state, &save[currentSlot], sizeof(State) );
+    Screen_DrawScreen(current->screen);
+}
+
+void Core_Reset()
+{
+    // TODO
+}
+
+void Core_Exit()
+{
+    exit(0);
+}
+
+int Core_Init(char* rom_path)
+{
+    srand(time(NULL));
+
+    FILE * fp = fopen(rom_path, "r");
+    if ( fp == NULL )
+    {
+        printf("File %s not found\n", rom_path);
         return -1;
     }
+
+    // Reset memory
+    memset( current, 0, sizeof(State) );
+
+    // Load font into memory
+    memcpy(current->Mem + FONT_BASE_ADDR, font, sizeof(charset_t));
 
     // Get ROM size
     fseek(fp, 0, SEEK_END);
     long fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    // Load into memory
-    fread(Mem + PROGRAM_BASE_ADDR, sizeof(byte_t), fsize, fp);
-
+    // Load ROM into memory
+    fread( current->Mem + PROGRAM_BASE_ADDR, sizeof(byte_t), fsize, fp );
     fclose(fp);
+
+    // Init stack
+    current->SP = &current->stack[0];
+
+    // Set program counter to first instruction
+    current->PC = PROGRAM_BASE_ADDR;
+
     return 0;
 }
 
-instruction_t Core_ReadOpcode() {
-    byte_t high = Mem[PC++];
-    byte_t low  = Mem[PC++];
+instruction_t Core_ReadOpcode()
+{
+    byte_t high = current->Mem[current->PC++];
+    byte_t low  = current->Mem[current->PC++];
     return high << 8 | low;
 }
 
 void Core_SkipInstr() {
-    PC += sizeof(instruction_t);
+    current->PC += sizeof(instruction_t);
 }
 
-void Core_ExecuteInstr(instruction_t instr) {
+void Core_ExecuteInstr(instruction_t instr)
+{
+    bool_t refreshScreen = False;
 
     byte_t x        = MASK(instr, 0x0F00, 8);
     byte_t y        = MASK(instr, 0x00F0, 4);
@@ -87,144 +115,244 @@ void Core_ExecuteInstr(instruction_t instr) {
     byte_t byte     = MASK(instr, 0x00FF, 0);
     word_t addr     = MASK(instr, 0x0FFF, 0);
 
-    if (OPCODE_MOV_VAL(instr)) {
-        DBG_PRINT(("Set V[%u] to %u\n", x, byte));
-        V[x] = byte;
-    } else if (OPCODE_ADD_VAL(instr)) {
-        DBG_PRINT(("Add %u to V[%u]\n", byte, x));
-        V[x] += byte;
-    } else if (OPCODE_MOV_REG(instr)) {
-        DBG_PRINT(("Set V[%u] to V[%u]\n", x, y));
-        V[x] = V[y];
-    } else if (OPCODE_AND(instr)) {
-        DBG_PRINT(("V[%u] &= V[%u]\n", x, y));
-        V[x] &= V[y];
-    } else if (OPCODE_XOR(instr)) {
-        DBG_PRINT(("V[%u] ^= V[%u]\n", x, y));
-        V[x] ^= V[y];
-    } else if (OPCODE_ADD_REG(instr)) {
-        DBG_PRINT(("V[%u] += V[%u] = ", x, y));
-        V[15] = (V[x] + V[y] > 0xFF ? 1 : 0);
-        V[x] += V[y];
-    } else if (OPCODE_SUB_REG(instr)) {
-        DBG_PRINT(("V[%u] -= V[%u]", x, y));
-        V[15] = (V[x] < V[y] ? 0 : 1);
-        V[x] -= V[y];
-    } else if (OPCODE_LSR(instr)) {
-        DBG_PRINT(("V[%u] >>= 1\n", x));
-        V[15] = MASK(V[x], 0x1, 0);
-        V[x] >>= 1;
-    } else if (OPCODE_LSL(instr)) {
-        DBG_PRINT(("V[%u] <<= 1\n", x));
-        V[15] = MASK(V[x], 0x80, 7);
-        V[x] <<= 1;
-    } else if (OPCODE_SKIP_REG_EQ(instr)) {
-        DBG_PRINT(("Skip if V[%u] == V[%u]\n", x, y));
-        if (V[x] == V[y]) {
+    if (OPCODE_CLS(instr)) // 00E0
+    {
+        DBG_PRINT(("CLS\n"));
+        memset(current->screen, 0, sizeof(screen_t));
+        refreshScreen = True;
+    }
+    else if (OPCODE_RETURN(instr)) // 00EE
+    {
+        DBG_PRINT(("RET\n"));
+        current->PC = *(--current->SP);
+    }
+    else if (OPCODE_JUMP(instr)) // 1nnn
+    {
+        DBG_PRINT(("%-4s 0x%03X\n", "JP", addr));
+        current->PC = addr;
+    }
+    else if (OPCODE_CALL(instr)) // 2nnn
+    {
+        DBG_PRINT(("%-4s 0x%03X\n", "CALL", addr));
+        *(current->SP++) = current->PC;
+        current->PC = addr;
+    }
+    else if (OPCODE_SKIP_EQ(instr)) // 3xkk
+    {
+        DBG_PRINT(("%-4s V[%X], %u\n", "SE", x, byte));
+        if (current->V[x] == byte)
+        {
             Core_SkipInstr();
         }
-    } else if (OPCODE_RAND(instr)) {
-        DBG_PRINT(("Set V[%u] to random & %u\n", x, byte));
-        V[x] = (byte_t) (rand() & byte);
-    } else if (OPCODE_SKIP_EQ(instr)) {
-        DBG_PRINT(("Skip if %u == %u\n", V[x], byte));
-        if (V[x] == byte) {
+    }
+    else if (OPCODE_SKIP_NEQ(instr)) // 4xkk
+    {
+        DBG_PRINT(("%-4s V[%X], %u\n", "SNE", x, byte));
+        if (current->V[x] != byte)
+        {
             Core_SkipInstr();
         }
-    } else if (OPCODE_SKIP_NEQ(instr)) {
-        DBG_PRINT(("Skip if %u != %u\n", V[x], byte));
-        if (V[x] != byte) {
+    }
+    else if (OPCODE_SKIP_EQ_REG(instr)) // 5xy0
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "SE", x, y));
+        if (current->V[x] == current->V[y])
+        {
             Core_SkipInstr();
         }
-    } else if (OPCODE_MOV_I(instr)) {
-        DBG_PRINT(("Set I to 0x%03X\n", addr));
-        I = addr;
-    } else if (OPCODE_DRAW(instr)) {
-        DBG_PRINT(("Draw %u rows at (%u,%u)\n", nibble, V[x], V[y]));
-        int dX, dY;
-        int ptr = I;
-        bool_t clear = false;
-        for (dY = 0; dY < nibble; dY++) {
-            unsigned char mask = Mem[ptr++];
-            for (dX = 0; dX < 8; dX++) {
-                if (mask & (0x80 >> dX)) {
-                    clear |= Screen_SwitchPixel(V[x] + dX, V[y] + dY);
+    }
+    else if (OPCODE_MOV_VAL(instr)) // 6xkk
+    {
+        DBG_PRINT(("%-4s V[%X], %u\n", "LD", x, byte));
+        current->V[x] = byte;
+    }
+    else if (OPCODE_ADD_VAL(instr)) // 7xkk
+    {
+        DBG_PRINT(("%-4s V[%X], %u\n", "ADD", x, byte));
+        current->V[x] += byte;
+    }
+    else if (OPCODE_MOV_REG(instr)) // 8xy0
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "LD", x, y));
+        current->V[x] = current->V[y];
+    }
+    else if (OPCODE_OR(instr)) // 8xy1
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "OR", x, y));
+        current->V[x] |= current->V[y];
+    }
+    else if (OPCODE_AND(instr)) // 8xy2
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "AND", x, y));
+        current->V[x] &= current->V[y];
+    }
+    else if (OPCODE_XOR(instr)) // 8xy3
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "XOR", x, y));
+        current->V[x] ^= current->V[y];
+    }
+    else if (OPCODE_ADD_REG(instr)) // 8xy4
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "ADD", x, y));
+        word_t result = ((word_t) current->V[x]) + ((word_t) current->V[y]);
+        current->V[0xF] = result > 0xFF ? 1 : 0;
+        current->V[x] = (byte_t) result;
+    }
+    else if (OPCODE_SUB_REG(instr)) // 8xy5
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]", "SUB", x, y));
+        current->V[0xF] = current->V[x] > current->V[y] ? 1 : 0;
+        current->V[x] -= current->V[y];
+    }
+    else if (OPCODE_LSR(instr)) // 8xy6
+    {
+        DBG_PRINT(("%-4s V[%X]\n", "SHR", x));
+        current->V[0xF] = BIT(current->V[x], 1);
+        current->V[x] /= 2;
+    }
+    else if (OPCODE_SUBN(instr)) // 8xy7
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "SUBN", x, y));
+        current->V[0xF] = current->V[y] > current->V[x] ? 1 : 0;
+        current->V[x] = current->V[y] - current->V[x];
+    }
+    else if (OPCODE_LSL(instr)) // 8xyE
+    {
+        DBG_PRINT(("%-4s V[%X]\n", "SHL", x));
+        current->V[0xF] = BIT(current->V[x], 7);
+        current->V[x] *= 2;
+    }
+    else if (OPCODE_SKIP_REG_NEQ(instr)) // 9xy0
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X]\n", "SNE", x, y));
+        if (current->V[x] != current->V[y])
+        {
+            Core_SkipInstr();
+        }
+    }
+    else if (OPCODE_MOV_I(instr)) // Annn
+    {
+        DBG_PRINT(("%-4s I, 0x%03X\n", "LD", addr));
+        current->I = addr;
+    }
+    else if (OPCODE_JUMP_REL(instr)) // Bnnn
+    {
+        DBG_PRINT(("%-4s V0, %u\n", "JP", addr));
+        current->PC = current->V[0] + addr;
+    }
+    else if (OPCODE_RAND(instr)) // Cxkk
+    {
+        DBG_PRINT(("%-4s V[%X], %u\n", "RAND", x, byte));
+        current->V[x] = (byte_t) (rand() & byte);
+    }
+    else if (OPCODE_DRAW(instr)) // Dxyn
+    {
+        DBG_PRINT(("%-4s V[%X], V[%X], %u\n", "DRW", x, y, nibble));
+
+        current->V[0xF] = 0;
+
+        for (int dy = 0; dy < nibble; dy++)
+        {
+            int py = (current->V[y] + dy) % SCREEN_HEIGHT;
+
+            byte_t b = current->Mem[current->I + dy];
+
+            for (int dx = 0; dx < 8; dx++)
+            {
+                int px = (current->V[x] + dx) % SCREEN_WIDTH;
+
+                if ( BIT(b, 7-dx) )
+                {
+                    if( current->screen[px][py] ) current->V[0xF] = 1;
+                    current->screen[px][py] = current->screen[px][py] ? 0 : 1;
                 }
             }
         }
-        V[15] = (clear ? 1 : 0);
-    } else if (OPCODE_RETURN(instr)) {
-        DBG_PRINT(("Call return\n"));
-        PC = Stack_Pop();
-    } else if (OPCODE_CLS(instr)) {
-        DBG_PRINT(("Clear screen\n"));
-        Screen_Clear();
-    } else if (OPCODE_BCD(instr)) {
-        DBG_PRINT(("Store BCD value of %u at 0x%02x\n", V[x], I));
 
-        int i;
-        unsigned char buffer = V[x];
-        for (i = 2; i >= 0; i--) {
-            Mem[I + i] = buffer % 10;
+        refreshScreen = True;
+    }
+    else if (OPCODE_SKIP_KP(instr)) // Ex9E
+    {
+        DBG_PRINT(("%-4s V[%X]\n", "SKP", x));
+        if (Keys_IsPressed(current->V[x]))
+        {
+            Core_SkipInstr();
+        }
+    }
+    else if (OPCODE_SKIP_NKP(instr)) // ExA1
+    {
+        DBG_PRINT(("%-4s V[%X]\n", "SKNP", x));
+        if (!Keys_IsPressed(current->V[x]))
+        {
+            Core_SkipInstr();
+        }
+    }
+    else if (OPCODE_GET_DELAY(instr)) // Fx07
+    {
+        DBG_PRINT(("%-4s V[%X], DT\n", "LD", x));
+        current->V[x] = Timer_Get(current->delay_timer);
+    }
+    else if (OPCODE_INPUT(instr)) // Fx0A
+    {
+        DBG_PRINT(("%-4s V[%X], K\n", "LD", x));
+        current->V[x] = Keys_GetKey();
+    }
+    else if (OPCODE_SET_DELAY(instr)) // Fx15
+    {
+        DBG_PRINT(("%-4s DT, V[%X]\n", "LD", x));
+        int ms = current->V[x] * 1000 / 60;
+        Timer_Set(&current->delay_timer, ms);
+    }
+    else if (OPCODE_SET_SOUND(instr)) // Fx18
+    {
+        DBG_PRINT(("%-4s ST, V[%X]\n", "LD", x));
+        int ms = current->V[x] * 1000 / 60;
+        Timer_Set(&current->sound_timer, ms);
+    }
+    else if (OPCODE_ADD_I(instr)) // Fx1E
+    {
+        DBG_PRINT(("%-4s I, V[%X]\n", "ADD", x));
+        current->I = (current->I + current->V[x]) & 0xFFF;
+    }
+    else if (OPCODE_FONT(instr)) // Fx29
+    {
+        DBG_PRINT(("%-4s F, V[%X]\n", "LD", x));
+        current->I = FONT_BASE_ADDR + (5 * current->V[x]);
+    }
+    else if (OPCODE_BCD(instr)) // Fx33
+    {
+        DBG_PRINT(("%-4s B, V[%X]\n", "LD", x));
+        unsigned char buffer = current->V[x];
+        for (int i = 2; i >= 0; i--)
+        {
+            current->Mem[current->I + i] = buffer % 10;
             buffer /= 10;
-            DBG_PRINT(("  0x%02x = %u\n", I+i, Mem[I+i]));
         }
-    } else if (OPCODE_LDR(instr)) {
-        DBG_PRINT(("Fill V[0] to V[%u] from 0x%02x\n", x, I));
-
-        int i;
-        for (i = 0; i <= x; i++) {
-            V[i] = Mem[I + i];
-            DBG_PRINT(("  V[%u] = Mem[%x] (0x%02x)\n", i, I+i, Mem[I+i]));
+    }
+    else if (OPCODE_STR(instr)) // Fx55
+    {
+        DBG_PRINT(("%-4s [I], V[%X]\n", "LD",  x));
+        for (int i = 0; i <= x; i++)
+        {
+            current->Mem[current->I + i] = current->V[i];
         }
-    } else if (OPCODE_STR(instr)) {
-        DBG_PRINT(("Store V[0] to V[%u] from 0x%02x\n", x, I));
-
-        int i;
-        for (i = 0; i <= x; i++) {
-            Mem[I + i] = V[i];
-            DBG_PRINT(("  Mem[%x] = V[%u] (0x%02x)\n", I+i, i, Mem[I+i]));
+    }
+    else if (OPCODE_LDR(instr)) // Fx65
+    {
+        DBG_PRINT(("%-4s V[%X], [I]\n", "LD", x));
+        for (int i = 0; i <= x; i++)
+        {
+            current->V[i] = current->Mem[current->I + i];
         }
-    } else if (OPCODE_FONT(instr)) {
-        DBG_PRINT(("Set I to char %x \n", V[x]));
-        I = FONT_BASE_ADDR + (FONTS_HEIGHT * V[x]);
-    } else if (OPCODE_SKIP_KEY_DOWN(instr)) {
-        DBG_PRINT(("Check key %u pressed\n", V[x]));
-        if (Keys_IsPressed(V[x])) {
-            Core_SkipInstr();
-        }
-    } else if (OPCODE_SKIP_KEY_UP(instr)) {
-        DBG_PRINT(("Check key %u released\n", V[x]));
-        if (!Keys_IsPressed(V[x])) {
-            Core_SkipInstr();
-        }
-    } else if (OPCODE_INPUT(instr)) {
-        int reg = MASK(instr, 0x0F00, 8);
-        DBG_PRINT(("Get key into V[%u]\n", reg));
-        V[reg] = Keys_GetKey();
-    } else if (OPCODE_SET_DELAY(instr)) {
-        DBG_PRINT(("Set delay timer to %u ticks\n", V[x]));
-        int ms = V[x] * 1000 / 60;
-        Timer_Set(&delay_timer, ms);
-    } else if (OPCODE_SET_SOUND(instr)) {
-        DBG_PRINT(("Set sound timer to %u ticks\n", V[x]));
-        int ms = V[x] * 1000 / 60;
-        Timer_Set(&sound_timer, ms);
-    } else if (OPCODE_GET_DELAY(instr)) {
-        V[x] = Timer_Get(delay_timer);
-        DBG_PRINT(("Delay timer %u stored in V[%u]\n", V[x], x));
-    } else if (OPCODE_JUMP(instr)) {
-        DBG_PRINT(("Jump to 0x%03X\n", addr));
-        PC = addr;
-    } else if (OPCODE_CALL(instr)) {
-        DBG_PRINT(("Call subroutine at 0x%03X\n", addr));
-        Stack_Push(PC);
-        PC = addr;
-    } else if (OPCODE_ADD_I(instr)) {
-        DBG_PRINT(("Add V[%u] to I\n", x));
-        I += V[x];
-    } else {
+    }
+    else
+    {
         fprintf(stderr, "Unknown instruction %04X\n", instr);
         exit(0);
+    }
+
+    if (refreshScreen)
+    {
+        Screen_DrawScreen(current->screen);
     }
 }
